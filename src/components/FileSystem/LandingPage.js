@@ -51,7 +51,7 @@ const LandingPage = () => {
       <Container maxW="container.xl">
         <VStack spacing={8} align="stretch">
           <Heading as="h1" size="2xl" textAlign="center">
-            Linux Command Explorer
+            Linux Command Visualizer
           </Heading>
           <Text fontSize="xl" textAlign="center">
             Click on a command to learn more and see it in action!
