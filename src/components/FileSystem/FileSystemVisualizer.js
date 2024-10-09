@@ -5,7 +5,7 @@ import { useParams } from 'react-router-dom';
 import FileList from './FileList';
 import { createMockFileSystem, getDirectoryContents, hasPermission, deleteFile, createFile, createDirectory } from '../../utils/fileSystemUtils';
 import { parseCommand } from '../../utils/commandParser';
-import { getCommandDescription, getDetailedCommandDescription, getManPageDescription } from '../../utils/commandDescriptions';
+import { getCommandDescription,  getManPageDescription } from '../../utils/commandDescriptions';
 
 const FileSystemVisualizer = () => {
   const { command } = useParams();
