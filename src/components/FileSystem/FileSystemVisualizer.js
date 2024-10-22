@@ -161,8 +161,31 @@ const FileSystemVisualizer = () => {
         break;
       case 'rm':
         if (args.includes('-r') || args.includes('-rf')) {
-          // Add recursive directory removal logic here
-          output = 'Recursive removal not implemented in this demo';
+          if (args.length < 2) {
+            output = 'Usage: rm -rf <directory>';
+          } else {
+            const dirName = args[args.length - 1];
+            const dirPath = `${currentDir}/${dirName}`.replace(/\/+/g, '/');
+            
+            const removeRecursively = (path) => {
+              if (fileSystem[path]) {
+                fileSystem[path].forEach(item => {
+                  if (item.type === 'directory') {
+                    removeRecursively(`${path}/${item.name}`.replace(/\/+/g, '/'));
+                  }
+                });
+                delete fileSystem[path];
+              }
+            };
+
+            if (fileSystem[dirPath]) {
+              removeRecursively(dirPath);
+              setFileSystem({...fileSystem});
+              output = `Removed directory: ${dirName}`;
+            } else {
+              output = `rm: cannot remove '${dirName}': No such file or directory`;
+            }
+          }
         } else if (args.length === 0) {
           output = 'Usage: rm <filename>';
         } else {
