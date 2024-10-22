@@ -6,11 +6,7 @@ import FileList from './FileList';
 import { createMockFileSystem, getDirectoryContents, hasPermission, deleteFile, createFile, createDirectory } from '../../utils/fileSystemUtils';
 import { parseCommand } from '../../utils/commandParser';
 import { getCommandDescription,  getManPageDescription } from '../../utils/commandDescriptions';
-import { getIpInfo } from '../../utils/networkUtils'; // Add this import
-
-
-// Add this new import for the SVG icon
-// import { ReactComponent as FolderIcon } from '../../assets/folder-icon.svg';
+import { getIpInfo } from '../../utils/networkUtils';
 
 const FileSystemVisualizer = () => {
   const { command } = useParams();

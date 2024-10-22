@@ -1,8 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Box, Text, SimpleGrid, VStack, Flex } from '@chakra-ui/react';
+import { Box, Text, SimpleGrid, VStack } from '@chakra-ui/react';
 import FileIcon from './FileIcon';
-import { FaFile } from 'react-icons/fa';
 
 const FileList = ({ files, isVertical, showDetailedView, animatingFile, folderIcon }) => {
   const container = {
