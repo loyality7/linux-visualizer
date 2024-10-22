@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { ChakraProvider, Box, Flex, VStack, Text, Heading, Input } from '@chakra-ui/react';
-import { motion } from 'framer-motion';
 import { useParams } from 'react-router-dom';
 import FileList from './FileList';
 import { createMockFileSystem, getDirectoryContents, hasPermission, deleteFile, createFile, createDirectory } from '../../utils/fileSystemUtils';
