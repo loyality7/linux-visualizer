@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChakraProvider, Box, Flex, VStack, Text, Heading, Input } from '@chakra-ui/react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useParams } from 'react-router-dom';
 import FileList from './FileList';
 import { createMockFileSystem, getDirectoryContents, hasPermission, deleteFile, createFile, createDirectory } from '../../utils/fileSystemUtils';
@@ -24,7 +24,6 @@ const FileSystemVisualizer = () => {
   const [displayedContent, setDisplayedContent] = useState(null);
   const [showDetailedView, setShowDetailedView] = useState(false);
   const [commandDescription, setCommandDescription] = useState('');
-  const [commandInfo, setCommandInfo] = useState(null);
   const [commandHistory, setCommandHistory] = useState([]);
 
   useEffect(() => {
@@ -71,7 +70,6 @@ const FileSystemVisualizer = () => {
         setDisplayedContent(null);
         setIsVertical(false);
         setShowDetailedView(false);
-        setCommandInfo(null);
         return ''; // Return empty string to avoid adding output to cleared terminal
       case 'ls':
         setDisplayedContent(null); // Clear displayed content
@@ -466,9 +464,9 @@ const FileSystemVisualizer = () => {
   const renderFolderIcon = () => (
     <svg viewBox="0 0 347.479 347.479" xmlns="http://www.w3.org/2000/svg" fill="#000000">
       <g id="SVGRepo_iconCarrier">
-        <path style="fill:#E0B03B;" d="M292.251,79.766H103.644v-8.544c0-5.974-4.888-10.862-10.862-10.862H30.414 c-5.975,0-10.862,4.888-10.862,10.862v8.544h-3.258C7.332,79.766,0,87.098,0,96.059v174.766c0,8.961,7.332,16.293,16.293,16.293 h275.958c8.961,0,16.293-7.332,16.293-16.293V96.059C308.545,87.098,301.213,79.766,292.251,79.766z"></path>
-        <rect x="23.243" y="95.385" style="fill:#FFFFFF;" width="262.059" height="176.113"></rect>
-        <path style="fill:#FFC843;" d="M312.426,271.293c-2.135,8.704-11.213,15.825-20.175,15.825H16.293 c-8.961,0-14.547-7.121-12.412-15.825l34.598-141.05c2.135-8.704,11.213-15.825,20.175-15.825h275.958 c8.961,0,14.547,7.121,12.412,15.825L312.426,271.293z"></path>
+        <path fill="#E0B03B" d="M292.251,79.766H103.644v-8.544c0-5.974-4.888-10.862-10.862-10.862H30.414 c-5.975,0-10.862,4.888-10.862,10.862v8.544h-3.258C7.332,79.766,0,87.098,0,96.059v174.766c0,8.961,7.332,16.293,16.293,16.293 h275.958c8.961,0,16.293-7.332,16.293-16.293V96.059C308.545,87.098,301.213,79.766,292.251,79.766z" />
+        <rect x="23.243" y="95.385" fill="#FFFFFF" width="262.059" height="176.113" />
+        <path fill="#FFC843" d="M312.426,271.293c-2.135,8.704-11.213,15.825-20.175,15.825H16.293 c-8.961,0-14.547-7.121-12.412-15.825l34.598-141.05c2.135-8.704,11.213-15.825,20.175-15.825h275.958 c8.961,0,14.547,7.121,12.412,15.825L312.426,271.293z" />
       </g>
     </svg>
   );
