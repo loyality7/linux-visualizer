@@ -1,5 +1,3 @@
-
-
 export const getCommandDescription = (command) => {
   const descriptions = {
     ls: "List directory contents. ",
@@ -22,6 +20,7 @@ export const getCommandDescription = (command) => {
     ps: "Report a snapshot of current processes",
     top: "Display Linux processes",
     awk: "Pattern scanning and processing language",
+    ip: "Show / manipulate routing, network devices, interfaces and tunnels",
   };
 
   return descriptions[command] || "No description available for this command.";
@@ -237,4 +236,4 @@ EXAMPLES
 
 `;
 
-};
+ };

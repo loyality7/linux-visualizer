@@ -6,6 +6,11 @@ import FileList from './FileList';
 import { createMockFileSystem, getDirectoryContents, hasPermission, deleteFile, createFile, createDirectory } from '../../utils/fileSystemUtils';
 import { parseCommand } from '../../utils/commandParser';
 import { getCommandDescription,  getManPageDescription } from '../../utils/commandDescriptions';
+import { getIpInfo } from '../../utils/networkUtils'; // Add this import
+
+
+// Add this new import for the SVG icon
+// import { ReactComponent as FolderIcon } from '../../assets/folder-icon.svg';
 
 const FileSystemVisualizer = () => {
   const { command } = useParams();
@@ -20,15 +25,31 @@ const FileSystemVisualizer = () => {
   const [showDetailedView, setShowDetailedView] = useState(false);
   const [commandDescription, setCommandDescription] = useState('');
   const [commandInfo, setCommandInfo] = useState(null);
+  const [commandHistory, setCommandHistory] = useState([]);
 
   useEffect(() => {
-    setFiles(getDirectoryContents(fileSystem, currentDir));
-    setDisplayedContent(null); // Clear displayed content when changing directories
+    const directoryContents = getDirectoryContents(fileSystem, currentDir);
+    setFiles(directoryContents || []); // Ensure files is always an array
+    setDisplayedContent(null);
     setCommandDescription(getCommandDescription(command));
   }, [currentDir, fileSystem, command]);
 
+  // Add this function at the top level of your component
+  const refreshFileList = () => {
+    setFiles(getDirectoryContents(fileSystem, currentDir));
+  };
+
   const handleCommand = (input) => {
-    const { command, args } = parseCommand(input);
+    let { command, args } = parseCommand(input);
+    let isSudo = false;
+
+    if (command === 'sudo') {
+      isSudo = true;
+      command = args.shift();
+    }
+
+    setCommandHistory(prevHistory => [...prevHistory, input]);
+
     let output = '';
 
     switch (command) {
@@ -99,8 +120,7 @@ const FileSystemVisualizer = () => {
         if (args[0]) {
           const file = files.find(f => f.name === args[0]);
           if (file && file.type === 'file') {
-            if (hasPermission(file, currentUser, 'read')) {
-              // Check if the file has a 'content' property
+            if (isSudo || hasPermission(file, currentUser, 'read')) {
               if (file.content) {
                 setDisplayedContent(`Contents of ${args[0]}:\n${file.content}`);
               } else {
@@ -167,44 +187,41 @@ const FileSystemVisualizer = () => {
             const dirName = args[args.length - 1];
             const dirPath = `${currentDir}/${dirName}`.replace(/\/+/g, '/');
             
-            const removeRecursively = (path) => {
-              if (fileSystem[path]) {
-                fileSystem[path].forEach(item => {
-                  if (item.type === 'directory') {
-                    removeRecursively(`${path}/${item.name}`.replace(/\/+/g, '/'));
-                  }
-                });
-                delete fileSystem[path];
+            if (fileSystem[currentDir].some(item => item.name === dirName && item.type === 'directory')) {
+              if (isSudo || hasPermission(fileSystem[currentDir].find(item => item.name === dirName), currentUser, 'write')) {
+                delete fileSystem[dirPath];
+                fileSystem[currentDir] = fileSystem[currentDir].filter(item => item.name !== dirName);
+                setFileSystem({...fileSystem});
+                setFiles(getDirectoryContents(fileSystem, currentDir)); // Update files state
+                output = `Removed directory: ${dirName}`;
+              } else {
+                output = 'Permission denied. Try using sudo.';
               }
-            };
-
-            if (fileSystem[dirPath]) {
-              removeRecursively(dirPath);
-              setFileSystem({...fileSystem});
-              output = `Removed directory: ${dirName}`;
             } else {
               output = `rm: cannot remove '${dirName}': No such file or directory`;
             }
           }
-        } else if (args.length === 0) {
-          output = 'Usage: rm <filename>';
         } else {
-          const fileName = args[0];
-          const file = files.find(f => f.name === fileName);
-          if (file) {
-            if (hasPermission(file, currentUser, 'write')) {
-              const success = deleteFile(fileSystem, currentDir, fileName);
-              if (success) {
-                setFileSystem({...fileSystem}); // Trigger re-render
-                output = `Deleted file: ${fileName}`;
+          if (args.length === 0) {
+            output = 'Usage: rm <filename>';
+          } else {
+            const fileName = args[0];
+            const file = files.find(f => f.name === fileName);
+            if (file) {
+              if (isSudo || hasPermission(file, currentUser, 'write')) {
+                const success = deleteFile(fileSystem, currentDir, fileName);
+                if (success) {
+                  setFileSystem({...fileSystem}); // Trigger re-render
+                  output = `Deleted file: ${fileName}`;
+                } else {
+                  output = `Failed to delete file: ${fileName}`;
+                }
               } else {
-                output = `Failed to delete file: ${fileName}`;
+                output = 'Permission denied. Try using sudo.';
               }
             } else {
-              output = 'Permission denied';
+              output = `rm: cannot remove '${fileName}': No such file or directory`;
             }
-          } else {
-            output = `rm: cannot remove '${fileName}': No such file or directory`;
           }
         }
         break;
@@ -303,8 +320,22 @@ const FileSystemVisualizer = () => {
         if (args.length < 2) {
           output = 'Usage: chmod <mode> <file>';
         } else {
-          // Add chmod logic here
-          output = `Changed permissions of ${args[1]} to ${args[0]}`;
+          const mode = args[0];
+          const fileName = args[1];
+          const file = fileSystem[currentDir].find(f => f.name === fileName);
+          if (file) {
+            if (isSudo || hasPermission(file, currentUser, 'write')) {
+              // Update the file's permissions
+              file.permissions = updatePermissions(file.permissions, mode);
+              setFileSystem({...fileSystem});
+              refreshFileList();
+              output = `Changed permissions of ${fileName} to ${mode}`;
+            } else {
+              output = 'Permission denied. Try using sudo.';
+            }
+          } else {
+            output = `chmod: cannot access '${fileName}': No such file or directory`;
+          }
         }
         break;
       case 'ssh':
@@ -347,6 +378,64 @@ const FileSystemVisualizer = () => {
           }
         }
         break;
+      case 'rmdir':
+        if (args.length === 0) {
+          output = 'Usage: rmdir <directory>';
+        } else {
+          const dirName = args[0];
+          const dirPath = `${currentDir}/${dirName}`.replace(/\/+/g, '/');
+          
+          if (fileSystem[currentDir].some(item => item.name === dirName && item.type === 'directory')) {
+            if (isSudo || hasPermission(fileSystem[currentDir].find(item => item.name === dirName), currentUser, 'write')) {
+              if (fileSystem[dirPath] && fileSystem[dirPath].length === 0) {
+                delete fileSystem[dirPath];
+                fileSystem[currentDir] = fileSystem[currentDir].filter(item => item.name !== dirName);
+                setFileSystem({...fileSystem});
+                setFiles(getDirectoryContents(fileSystem, currentDir)); // Update files state
+                output = `Removed directory: ${dirName}`;
+              } else {
+                output = `rmdir: failed to remove '${dirName}': Directory not empty`;
+              }
+            } else {
+              output = 'Permission denied. Try using sudo.';
+            }
+          } else {
+            output = `rmdir: failed to remove '${dirName}': No such file or directory`;
+          }
+        }
+        break;
+      case 'id':
+        output = `uid=1000(${currentUser}) gid=1000(${currentUser}) groups=1000(${currentUser}),4(adm),24(cdrom),27(sudo),30(dip),46(plugdev),113(lpadmin),128(sambashare)`;
+        setDisplayedContent(output);
+        break;
+
+      case 'uid':
+        output = '1000';
+        setDisplayedContent(output);
+        break;
+
+      case 'uname':
+        if (args.includes('-a')) {
+          output = 'Linux localhost 5.4.0-42-generic #46-Ubuntu SMP Fri Jul 10 00:24:02 UTC 2020 x86_64 x86_64 x86_64 GNU/Linux';
+        } else {
+          output = 'Linux';
+        }
+        setDisplayedContent(output);
+        break;
+
+      case 'history':
+        output = commandHistory.map((cmd, index) => `${index + 1}  ${cmd}`).join('\n');
+        setDisplayedContent(output);
+        break;
+      case 'ip':
+        if (args.length === 0 || args[0] === 'a' || args[0] === 'addr') {
+          const ipInfo = getIpInfo();
+          output = ipInfo;
+          setDisplayedContent(output);
+        } else {
+          output = `Usage: ip [ OPTIONS ] OBJECT { COMMAND | help }\n       ip [ -force ] -batch filename`;
+        }
+        break;
       default:
         setDisplayedContent(null); // Clear displayed content for unknown commands
         output = `Command not found: ${command}. Type 'man <command>' for help.`;
@@ -362,6 +451,27 @@ const FileSystemVisualizer = () => {
       setTerminalLineData(prevData => [...prevData, { type: 'output', value: output }]);
     }
   };
+
+  // Add this function to update permissions
+  const updatePermissions = (currentPermissions, mode) => {
+    let newPermissions = currentPermissions;
+    if (mode.includes('+x')) {
+      newPermissions = newPermissions.slice(0, 3) + 'x' + newPermissions.slice(4);
+    }
+    // Add more cases for other chmod options as needed
+    return newPermissions;
+  };
+
+  // Update the renderFolderIcon function
+  const renderFolderIcon = () => (
+    <svg viewBox="0 0 347.479 347.479" xmlns="http://www.w3.org/2000/svg" fill="#000000">
+      <g id="SVGRepo_iconCarrier">
+        <path style="fill:#E0B03B;" d="M292.251,79.766H103.644v-8.544c0-5.974-4.888-10.862-10.862-10.862H30.414 c-5.975,0-10.862,4.888-10.862,10.862v8.544h-3.258C7.332,79.766,0,87.098,0,96.059v174.766c0,8.961,7.332,16.293,16.293,16.293 h275.958c8.961,0,16.293-7.332,16.293-16.293V96.059C308.545,87.098,301.213,79.766,292.251,79.766z"></path>
+        <rect x="23.243" y="95.385" style="fill:#FFFFFF;" width="262.059" height="176.113"></rect>
+        <path style="fill:#FFC843;" d="M312.426,271.293c-2.135,8.704-11.213,15.825-20.175,15.825H16.293 c-8.961,0-14.547-7.121-12.412-15.825l34.598-141.05c2.135-8.704,11.213-15.825,20.175-15.825h275.958 c8.961,0,14.547,7.121,12.412,15.825L312.426,271.293z"></path>
+      </g>
+    </svg>
+  );
 
   return (
     <ChakraProvider>
@@ -391,30 +501,18 @@ const FileSystemVisualizer = () => {
         </Box>
         <VStack width="50%" p={4} bg="gray.100" spacing={4} align="stretch">
           <Text fontSize="lg" fontWeight="bold">Current directory: {currentDir}</Text>
-          {commandInfo ? (
-            <Box bg="white" p={4} borderRadius="md" overflowY="auto" maxHeight="80vh">
-              <Text fontWeight="bold">{commandInfo.command}</Text>
-              <Text mt={2}>{commandInfo.description}</Text>
-            </Box>
-          ) : displayedContent ? (
+          {displayedContent ? (
             <Box bg="white" p={4} borderRadius="md" whiteSpace="pre-wrap">
               <Text>{displayedContent}</Text>
             </Box>
           ) : (
-            <AnimatePresence>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-              >
-                <FileList 
-                  files={files} 
-                  isVertical={isVertical} 
-                  showDetailedView={showDetailedView}
-                  animatingFile={animatingFile} 
-                />
-              </motion.div>
-            </AnimatePresence>
+            <FileList 
+              files={files || []}
+              isVertical={isVertical} 
+              showDetailedView={showDetailedView}
+              animatingFile={animatingFile}
+              folderIcon={renderFolderIcon()} // This should now correctly pass the SVG
+            />
           )}
         </VStack>
       </Flex>

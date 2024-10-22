@@ -157,17 +157,32 @@ export const createMockFileSystem = () => ({
   };
 
   export const hasPermission = (file, user, action) => {
-    if (user === 'root') return true;
-    const permissions = file.permissions.slice(1);
-    const userPerms = permissions.slice(0, 3);
-    const otherPerms = permissions.slice(6);
-    const relevantPerms = file.owner === user ? userPerms : otherPerms;
-    
+    if (!file || !file.permissions) {
+      return false;
+    }
+    const permissions = file.permissions.slice(1); // Remove the first character (file type)
+    const userPermissions = permissions.slice(0, 3);
+    const groupPermissions = permissions.slice(3, 6);
+    const otherPermissions = permissions.slice(6, 9);
+
+    let relevantPermissions;
+    if (file.owner === user) {
+      relevantPermissions = userPermissions;
+    } else if (file.group === user) {
+      relevantPermissions = groupPermissions;
+    } else {
+      relevantPermissions = otherPermissions;
+    }
+
     switch (action) {
-      case 'read': return relevantPerms[0] === 'r';
-      case 'write': return relevantPerms[1] === 'w';
-      case 'execute': return relevantPerms[2] === 'x';
-      default: return false;
+      case 'read':
+        return relevantPermissions[0] === 'r';
+      case 'write':
+        return relevantPermissions[1] === 'w';
+      case 'execute':
+        return relevantPermissions[2] === 'x';
+      default:
+        return false;
     }
   };
 
